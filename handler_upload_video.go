@@ -73,6 +73,22 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	aspectRatio, err := getVideoAspectRatio(tempFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Something went wrong while parsing metadata", err)
+		return
+	}
+
+	var aspectRatioPrefix string
+	switch aspectRatio {
+	case "16:9":
+		aspectRatioPrefix = "landscape"
+	case "9:16":
+		aspectRatioPrefix = "portrait"
+	default:
+		aspectRatioPrefix = "other"
+	}
+
 	name := make([]byte, 32)
 	_, err = rand.Read(name)
 	if err != nil {
@@ -80,7 +96,12 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	extention := strings.Split(mediaType, "/")[1]
-	fileKey := fmt.Sprintf("%s.%s", base64.RawURLEncoding.EncodeToString(name), extention)
+	fileKey := fmt.Sprintf(
+		"%s/%s.%s",
+		aspectRatioPrefix,
+		base64.RawURLEncoding.EncodeToString(name),
+		extention,
+	)
 	_, err = cfg.s3Client.PutObject(
 		r.Context(),
 		&s3.PutObjectInput{
