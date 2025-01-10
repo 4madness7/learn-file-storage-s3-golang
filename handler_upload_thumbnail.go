@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -47,10 +49,10 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	mediaType := fileHeader.Header.Get("Content-Type")
-    if mediaType != "image/png" && mediaType != "image/jpeg" {
+	if mediaType != "image/png" && mediaType != "image/jpeg" {
 		respondWithError(w, http.StatusBadRequest, "Can't upload files of type provided, only 'jpeg' and 'png' are allowed.", err)
 		return
-    }
+	}
 
 	video, err := cfg.db.GetVideo(videoID)
 	if err != nil {
@@ -61,17 +63,23 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
 		return
 	}
+	name := make([]byte, 32)
+	_, err = rand.Read(name)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Something went wrong", err)
+		return
+	}
 	extention := strings.Split(mediaType, "/")[1]
 	videoUrl := filepath.Join(
 		cfg.assetsRoot,
-		fmt.Sprintf("%s.%s", videoIDString, extention),
+		fmt.Sprintf("%s.%s", base64.RawURLEncoding.EncodeToString(name), extention),
 	)
 	thumbnailFile, err := os.Create(videoUrl)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Something went wrong", err)
 		return
 	}
-    _, err = io.Copy(thumbnailFile, inputFile)
+	_, err = io.Copy(thumbnailFile, inputFile)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Something went wrong", err)
 		return
