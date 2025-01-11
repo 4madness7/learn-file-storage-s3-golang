@@ -102,12 +102,25 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		base64.RawURLEncoding.EncodeToString(name),
 		extention,
 	)
+	processedFileName, err := processVideoForFastStart(tempFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Something went wrong", err)
+		return
+	}
+	processedFile, err := os.Open(processedFileName)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Something went wrong", err)
+		return
+	}
+	defer os.Remove(processedFile.Name())
+	defer processedFile.Close()
+
 	_, err = cfg.s3Client.PutObject(
 		r.Context(),
 		&s3.PutObjectInput{
 			Bucket:      &cfg.s3Bucket,
 			Key:         &fileKey,
-			Body:        tempFile,
+			Body:        processedFile,
 			ContentType: &mediaType,
 		},
 	)
