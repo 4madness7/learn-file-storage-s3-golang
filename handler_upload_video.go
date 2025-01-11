@@ -128,7 +128,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusBadRequest, "Cannot insert into bucket", err)
 		return
 	}
-	url := fmt.Sprintf("%s,%s", cfg.s3Bucket, fileKey)
+	url := fmt.Sprintf("%s/%s", cfg.s3CfDistribution, fileKey)
 	video.VideoURL = &url
 	err = cfg.db.UpdateVideo(video)
 	if err != nil {
@@ -136,10 +136,5 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	presignedVideo, err := cfg.dbVideoToSignedVideo(video)
-	if err != nil {
-		respondWithError(w, http.StatusNotFound, "Error while signing video", err)
-		return
-	}
-	respondWithJSON(w, http.StatusOK, presignedVideo)
+	respondWithJSON(w, http.StatusOK, video)
 }
